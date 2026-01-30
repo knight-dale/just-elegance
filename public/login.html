@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Just Elegance</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body class="auth-page">
+
+    <div class="auth-container">
+        <h1 class="auth-logo">Just Elegance</h1>
+        <h2 class="auth-subtitle">Welcome Back</h2>
+        
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email Address" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" class="ghost-btn">Log In</button>
+        </form>
+
+        <div class="divider"><span>OR</span></div>
+
+        <button id="googleLoginBtn" class="google-btn">
+            <img src="google.png" alt="Google G" class="google-icon">
+            Continue with Google
+        </button>
+
+        <p class="auth-footer">
+            Don't have an account? <a href="create.html">Create Account</a>
+        </p>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

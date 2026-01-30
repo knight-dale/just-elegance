@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel | Just Elegance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <h1>Admin Dashboard</h1>
+        <div class="nav-links">
+            <a href="index.html">View Shop</a>
+            <button id="logoutBtn" style="background:red; color:white; padding:5px 10px; border:none; border-radius:4px; cursor:pointer;">Log Out</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Add New Inventory Item</h2>
+        <form id="upload-form">
+            <input type="text" id="pName" placeholder="Product Name" required>
+            <input type="number" id="pPrice" placeholder="Price (KES)" required>
+            
+            <label>Category:</label>
+            <select id="pCategory" required>
+                <option value="Lampshades">Lampshades</option>
+                <option value="Chandeliers">Chandeliers</option>
+                <option value="Wall Brackets">Wall Brackets</option>
+            </select>
+
+            <label>Placement:</label>
+            <select id="pPlacement" required>
+                <option value="Living Room">Living Room</option>
+                <option value="Kitchen">Kitchen</option>
+                <option value="Balcony">Balcony</option>
+                <option value="Outdoor">Outdoor</option>
+            </select>
+            
+            <label style="font-size: 14px; color: #666;">Product Image:</label>
+            <input type="file" id="pImage" accept="image/*" required>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="pStock" checked>
+                <label for="pStock">In Stock</label>
+            </div>
+            <button type="submit" id="submitBtn">Upload Product</button>
+        </form>
+
+        <hr>
+        <h3>Current Inventory</h3>
+        <div id="admin-product-list"></div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>

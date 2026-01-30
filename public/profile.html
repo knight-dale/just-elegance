@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Curtain Hub | My Profile</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <h1>Curtain Hub</h1>
+        <div class="nav-links">
+            <a href="index.html">Back to Shop</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="summary-box">
+            <h2>Account Settings</h2>
+            <p id="user-email-display" style="color: var(--text-muted);"></p>
+        </div>
+
+        <div class="address-section">
+            <h3>Update Delivery Address</h3>
+            <textarea id="profile-address" style="height: 80px;"></textarea>
+            <button id="updateAddressBtn" class="primary-btn" style="background: var(--accent);">Update Address</button>
+        </div>
+
+        <div class="address-section" style="margin-top: 20px;">
+            <h3>Security</h3>
+            <input type="password" id="new-password" placeholder="New Password (min 8 chars)">
+            <button id="updatePasswordBtn" class="primary-btn">Change Password</button>
+        </div>
+
+        <div id="admin-section" style="margin-top: 20px;"></div>
+
+        <button id="logoutBtn" style="margin-top: 40px; background: #e74c3c;">Log Out</button>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://jspm.dev/@supabase/supabase-js';
+        
+        const supabaseUrl = 'https://sigvvutzispubojrjdrb.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpZ3Z2dXR6aXNwdWJvanJqZHJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjY3NzQsImV4cCI6MjA4NTMwMjc3NH0.z9y352u4sJNC4xoT10M-ikuVBm5OizUAyvGBIX2BCBU';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        async function initProfile() {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            
+            if (sessionError || !session) {
+                console.log("No session found, redirecting to login...");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const user = session.user;
+
+            document.getElementById('user-email-display').innerText = user.email;
+            document.getElementById('profile-address').value = user.user_metadata.default_address || "";
+            console.log("Logged in user email:", user.email);
+
+            if (user.email.toLowerCase().trim() === "jonahjjed@gmail.com") {
+                const adminSection = document.getElementById('admin-section');
+                adminSection.innerHTML = `
+                    <div class="summary-box" style="border: 2px solid var(--accent); margin-top: 20px;">
+                        <h3 style="color: var(--accent);">Management Console</h3>
+                        <p>Access inventory and sales data.</p>
+                        <button id="goToAdmin" class="primary-btn" style="background: var(--primary);">
+                            Go to Admin Panel (sales.html)
+                        </button>
+                    </div>
+                `;
+                document.getElementById('goToAdmin').onclick = () => {
+                    window.location.href = 'sales.html';
+                };
+            }
+
+            document.getElementById('updateAddressBtn').onclick = async () => {
+                const newAddr = document.getElementById('profile-address').value;
+                const { error } = await supabase.auth.updateUser({
+                    data: { default_address: newAddr }
+                });
+                if (error) alert(error.message);
+                else alert("Address updated successfully!");
+            };
+
+            document.getElementById('updatePasswordBtn').onclick = async () => {
+                const newPass = document.getElementById('new-password').value;
+                if (newPass.length < 8) {
+                    alert("Password must be at least 8 characters!");
+                    return;
+                }
+                const { error } = await supabase.auth.updateUser({ password: newPass });
+                if (error) alert(error.message);
+                else {
+                    alert("Password changed successfully!");
+                    document.getElementById('new-password').value = "";
+                }
+            };
+
+            document.getElementById('logoutBtn').onclick = async () => {
+                await supabase.auth.signOut();
+                window.location.href = "index.html";
+            };
+        }
+
+        initProfile();
+    </script>
+</body>
+</html>

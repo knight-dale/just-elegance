@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Just Elegance</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav>
+        <h1>Just Elegance</h1>
+        <div class="nav-links">
+            <a href="index.html">Shop</a>
+            <button id="logoutBtn" class="logout-link">Log Out</button>
+        </div>
+    </nav>
+
+    <div class="container checkout-container">
+        <h2 class="section-title">Finalize Your Order</h2>
+        
+        <div class="checkout-grid">
+            <div class="checkout-details">
+                <section class="checkout-section">
+                    <h3>1. Shipping Destination</h3>
+                    <p class="section-desc">Please specify exactly where you would like your items delivered.</p>
+                    <div class="input-group">
+                        <label for="shipping-address">Delivery Address</label>
+                        <textarea id="shipping-address" placeholder="e.g. House No. 4, Kimathi Estate, Nyeri" required></textarea>
+                    </div>
+                </section>
+
+                <section class="checkout-section">
+                    <h3>2. Secure Payment</h3>
+                    <p class="section-desc">An M-Pesa prompt will be sent to the number below.</p>
+                    
+                    <div class="input-group">
+                        <label for="mpesa-number">M-Pesa Phone Number</label>
+                        <input type="tel" id="mpesa-number" placeholder="e.g. 0757202147" required>
+                        <span class="input-hint">Format: 07XXXXXXXX or 254XXXXXXXX</span>
+                    </div>
+
+                    <div class="mpesa-badge">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/1/15/M-PESA_LOGO-01.svg" alt="M-Pesa" class="mpesa-logo-small">
+                        <span>Secure STK Push via Intasend</span>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="checkout-summary">
+                <div class="summary-card">
+                    <h3>Order Summary</h3>
+                    <div id="cart-items" class="cart-preview">
+                        </div>
+                    <div class="total-row">
+                        <span>Total Amount</span>
+                        <span id="order-total">KES 0</span>
+                    </div>
+                    <button id="confirm-order" class="confirm-btn">
+                        PLACE ORDER
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
