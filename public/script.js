@@ -154,22 +154,53 @@ async function displayCart() {
     const cartItemsDiv = document.getElementById('cart-items');
     const totalDisplay = document.getElementById('order-total');
     if (!cartItemsDiv) return;
+
     const cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
     cartItemsDiv.innerHTML = '';
     let total = 0;
+
     if (cart.length === 0) {
-        cartItemsDiv.innerHTML = '<p class="section-desc">Empty.</p>';
+        cartItemsDiv.innerHTML = '<p class="section-desc">Your selection is empty.</p>';
         totalDisplay.innerText = 'KES 0';
         return;
     }
-    cart.forEach(item => {
+
+    cart.forEach((item, index) => {
         total += item.price;
-        const row = document.createElement('div');
-        row.style = "display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.85rem;";
-        row.innerHTML = `<span>${item.name}</span><span>KES ${item.price.toLocaleString()}</span>`;
-        cartItemsDiv.appendChild(row);
+        const itemRow = document.createElement('div');
+        itemRow.className = 'cart-item-row';
+        itemRow.style = "display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:0.85rem; border-bottom: 1px solid #eee; padding-bottom: 10px;";
+        
+        itemRow.innerHTML = `
+            <div style="display:flex; flex-direction:column;">
+                <span style="font-weight:600;">${item.name}</span>
+                <span style="color:var(--text-light);">KES ${item.price.toLocaleString()}</span>
+            </div>
+            <button class="remove-item-btn" data-index="${index}" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:0.75rem; text-decoration:underline;">
+                Remove
+            </button>
+        `;
+        cartItemsDiv.appendChild(itemRow);
     });
+
+    // Attach listeners to all remove buttons
+    document.querySelectorAll('.remove-item-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const indexToRemove = e.target.getAttribute('data-index');
+            removeFromCart(indexToRemove);
+        });
+    });
+
     totalDisplay.innerText = `KES ${total.toLocaleString()}`;
+}
+
+function removeFromCart(index) {
+    let cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
+    // Remove the specific item by index
+    cart.splice(index, 1);
+    localStorage.setItem('justEleganceCart', JSON.stringify(cart));
+    // Refresh the display
+    displayCart();
 }
 
 document.getElementById('confirm-order')?.addEventListener('click', async () => {
