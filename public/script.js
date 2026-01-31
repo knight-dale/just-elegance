@@ -194,7 +194,7 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
 
     try {
         // PASTE YOUR NEW DEPLOYMENT URL HERE
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7QpXCidX5E5XNMgNTLZ5EHN80K3ZJ60YOqiT3squeheYVPUXx9xq6MZ7ZCZq8E-gsEQ/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwC7T4mQKvhk66vgY_yfCnHbgqR_jm3ZeSvcukWKPKL5Q6xYUVnisZXtq9h7dmK4UqdVA/exec";
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
