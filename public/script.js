@@ -180,7 +180,6 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
 
     if (!address || !phone) return alert("Please fill all fields.");
 
-    // Strict Phone Formatting for Safaricom (Must be 254...)
     let cleanPhone = phone.replace(/\D/g, ''); 
     if (cleanPhone.startsWith('0')) cleanPhone = '254' + cleanPhone.substring(1);
     if (cleanPhone.startsWith('7') || cleanPhone.startsWith('1')) cleanPhone = '254' + cleanPhone;
@@ -193,7 +192,6 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
     if (!user) return window.location.href = "login.html";
 
     try {
-        // PASTE YOUR NEW DEPLOYMENT URL HERE
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwC7T4mQKvhk66vgY_yfCnHbgqR_jm3ZeSvcukWKPKL5Q6xYUVnisZXtq9h7dmK4UqdVA/exec";
 
         fetch(GOOGLE_SCRIPT_URL, {
@@ -205,7 +203,6 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
             })
         });
 
-        // Record the order in Supabase
         await supabase.from('orders').insert([{ 
             user_id: user.id,
             delivery_address: address,
