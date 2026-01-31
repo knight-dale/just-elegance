@@ -175,25 +175,42 @@ async function displayCart() {
 document.getElementById('confirm-order')?.addEventListener('click', async () => {
     const address = document.getElementById('shipping-address').value;
     const phone = document.getElementById('mpesa-number').value;
-    const totalNumeric = parseFloat(document.getElementById('order-total').innerText.replace(/[^\d.]/g, ''));
-    if (!address.trim() || !phone.trim()) return alert("Fill all fields");
+    const totalRaw = document.getElementById('order-total').innerText;
+    const totalNumeric = parseFloat(totalRaw.replace(/[^\d.]/g, ''));
+
+    if (!address.trim() || !phone.trim()) return alert("Please provide details.");
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return window.location.href = "login.html";
+
     let formattedPhone = phone.trim().startsWith('0') ? '254' + phone.trim().substring(1) : phone.trim();
+
     try {
-        const res = await fetch("https://api.instasend.com/v1/payment/stk-push/", {
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOtodylp8J_WCcvs4J5TWuE-OH0_PkT3ZZ__ii5NaTOyMzhDVaa7E09Aof1STswANt5Q/exec";
+
+        fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer ISPubKey_live_fbe987ba-ded0-4538-ab0c-446f5e0bee5c" },
-            body: JSON.stringify({ amount: totalNumeric, phone_number: formattedPhone, label: "Just Elegance" })
+            mode: "no-cors", 
+            body: JSON.stringify({ 
+                amount: totalNumeric,
+                phone_number: formattedPhone 
+            })
         });
-        if (res.ok) {
-            fetch("https://script.google.com/macros/s/AKfycbzQ6P05s0JL0mWh8Yx3cnBSjpgFiQhOJdoyxBTo76Q0sqcHxouxU4V-qWHbU3CiACtywQ/exec", { method: "POST", mode: "no-cors", body: JSON.stringify({ amount: totalNumeric }) });
-            await supabase.from('orders').insert([{ user_id: user.id, delivery_address: address, total_price: totalNumeric, status: 'payout_initiated' }]);
-            alert("Prompt sent!");
-            localStorage.removeItem('justEleganceCart');
-            window.location.href = "index.html";
-        }
-    } catch (err) { alert(err.message); }
+
+        await supabase.from('orders').insert([{ 
+            user_id: user.id,
+            delivery_address: address,
+            total_price: totalNumeric,
+            status: 'processing'
+        }]);
+
+        alert("Check your phone for the M-Pesa prompt!");
+        localStorage.removeItem('justEleganceCart');
+        window.location.href = "index.html";
+
+    } catch (err) {
+        alert("System Error: " + err.message);
+    }
 });
 
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
