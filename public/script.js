@@ -36,14 +36,17 @@ document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithG
 
 async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.email !== adminEmail) {
-        if (window.location.pathname.includes("sales.html")) {
+    const isAdmin = user?.user_metadata?.is_admin === true;
+
+    if (window.location.pathname.includes("sales.html")) {
+        if (!user || !isAdmin) {
             alert("Access Denied");
             window.location.href = "login.html";
+            return false;
         }
     }
+    return isAdmin;
 }
-checkAdmin();
 
 function addToCart(item) {
     let cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
@@ -200,11 +203,14 @@ document.getElementById('categoryFilter')?.addEventListener('change', (e) => loa
 
 async function init() {
     const { data: { user } } = await supabase.auth.getUser();
+    const isAdmin = await checkAdmin();
+
     if (user) {
         if (document.getElementById('navLoginBtn')) document.getElementById('navLoginBtn').style.display = "none";
         if (document.getElementById('navProfileLink')) document.getElementById('navProfileLink').style.display = "inline-block";
-        if (user.email === adminEmail && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
+        if (isAdmin && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
     }
+    
     loadProducts();
     displayCart();
 }
