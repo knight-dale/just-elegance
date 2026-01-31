@@ -34,7 +34,7 @@ document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithG
 
 async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
-    const isAdmin = user?.user_metadata?.is_admin === true;
+    const isAdmin = !!user?.user_metadata?.is_admin;
     if (window.location.pathname.includes("sales.html") && (!user || !isAdmin)) {
         alert("Access Denied");
         window.location.href = "login.html";
@@ -186,14 +186,14 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
     let formattedPhone = phone.trim().startsWith('0') ? '254' + phone.trim().substring(1) : phone.trim();
 
     try {
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOtodylp8J_WCcvs4J5TWuE-OH0_PkT3ZZ__ii5NaTOyMzhDVaa7E09Aof1STswANt5Q/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJeKdXvLkTSReiYLRuJtDTPUnJU6LlBYX4Kz5RbUdJYeN2YPa7xiTr38etB7ldg78bEQ/exec";
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             mode: "no-cors", 
             body: JSON.stringify({ 
                 amount: totalNumeric,
-                phone_number: formattedPhone 
+                phone_number: formattedPhone
             })
         });
 
@@ -226,7 +226,7 @@ async function init() {
     if (user) {
         if (document.getElementById('navLoginBtn')) document.getElementById('navLoginBtn').style.display = "none";
         if (document.getElementById('navProfileLink')) document.getElementById('navProfileLink').style.display = "inline-block";
-        const isAdmin = user?.user_metadata?.is_admin === true;
+        const isAdmin = !!user?.user_metadata?.is_admin;
         if (isAdmin && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
     }
 }
