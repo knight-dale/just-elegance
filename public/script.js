@@ -174,42 +174,51 @@ async function displayCart() {
 
 document.getElementById('confirm-order')?.addEventListener('click', async () => {
     const address = document.getElementById('shipping-address').value;
-    const phone = document.getElementById('mpesa-number').value;
+    const phone = document.getElementById('mpesa-number').value.trim();
     const totalRaw = document.getElementById('order-total').innerText;
     const totalNumeric = parseFloat(totalRaw.replace(/[^\d.]/g, ''));
 
-    if (!address.trim() || !phone.trim()) return alert("Please provide details.");
+    if (!address || !phone) return alert("Please fill all fields.");
+
+    // Strict Phone Formatting for Safaricom (Must be 254...)
+    let cleanPhone = phone.replace(/\D/g, ''); 
+    if (cleanPhone.startsWith('0')) cleanPhone = '254' + cleanPhone.substring(1);
+    if (cleanPhone.startsWith('7') || cleanPhone.startsWith('1')) cleanPhone = '254' + cleanPhone;
+
+    if (cleanPhone.length !== 12) {
+        return alert("Invalid phone format. Use 07... or 254...");
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return window.location.href = "login.html";
 
-    let formattedPhone = phone.trim().startsWith('0') ? '254' + phone.trim().substring(1) : phone.trim();
-
     try {
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJeKdXvLkTSReiYLRuJtDTPUnJU6LlBYX4Kz5RbUdJYeN2YPa7xiTr38etB7ldg78bEQ/exec";
+        // PASTE YOUR NEW DEPLOYMENT URL HERE
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7QpXCidX5E5XNMgNTLZ5EHN80K3ZJ60YOqiT3squeheYVPUXx9xq6MZ7ZCZq8E-gsEQ/exec";
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             mode: "no-cors", 
             body: JSON.stringify({ 
                 amount: totalNumeric,
-                phone_number: formattedPhone
+                phone_number: cleanPhone
             })
         });
 
+        // Record the order in Supabase
         await supabase.from('orders').insert([{ 
             user_id: user.id,
             delivery_address: address,
             total_price: totalNumeric,
-            status: 'processing'
+            status: 'awaiting_payment'
         }]);
 
-        alert("Check your phone for the M-Pesa prompt!");
+        alert("Prompt sent! Please enter your PIN to deposit funds.");
         localStorage.removeItem('justEleganceCart');
         window.location.href = "index.html";
 
     } catch (err) {
-        alert("System Error: " + err.message);
+        alert("Request failed: " + err.message);
     }
 });
 
