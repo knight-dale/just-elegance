@@ -8,10 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <nav>
+    <nav id="checkout-nav">
         <h1>Just Elegance</h1>
+        
+        <input type="checkbox" id="menu-toggle" class="menu-toggle">
+        <label for="menu-toggle" class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </label>
+
         <div class="nav-links">
-            <a href="index.html">Shop</a>
+            <a href="index.html">Back To Shop</a>
             <button id="logoutBtn" class="logout-link">Log Out</button>
         </div>
     </nav>
@@ -22,7 +30,7 @@
         <div class="checkout-grid">
             <div class="checkout-details">
                 <section class="checkout-section">
-                    <h3>1. Shipping Destination</h3>
+                    <h3>Shipping Destination</h3>
                     <p class="section-desc">Please specify exactly where you would like your items delivered.</p>
                     <div class="input-group">
                         <label for="shipping-address">Delivery Address</label>
@@ -31,12 +39,12 @@
                 </section>
 
                 <section class="checkout-section">
-                    <h3>2. Secure Payment</h3>
+                    <h3>Secure Payment</h3>
                     <p class="section-desc">An M-Pesa prompt will be sent to the number below.</p>
                     
                     <div class="input-group">
                         <label for="mpesa-number">M-Pesa Phone Number</label>
-                        <input type="tel" id="mpesa-number" placeholder="e.g. 0757202147" required>
+                        <input type="tel" id="mpesa-number" placeholder="e.g. 0712345678" required>
                         <span class="input-hint">Format: 07XXXXXXXX or 254XXXXXXXX</span>
                     </div>
 

@@ -3,7 +3,36 @@ import { createClient } from 'https://jspm.dev/@supabase/supabase-js';
 const supabaseUrl = 'https://sigvvutzispubojrjdrb.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpZ3Z2dXR6aXNwdWJvanJqZHJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjY3NzQsImV4cCI6MjA4NTMwMjc3NH0.z9y352u4sJNC4xoT10M-ikuVBm5OizUAyvGBIX2BCBU';
 const supabase = createClient(supabaseUrl, supabaseKey);
-const adminEmail = "jonahjjed@gmail.com";
+
+async function signInWithGoogle() {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: window.location.origin 
+        }
+    });
+    if (error) console.error(error.message);
+}
+
+document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) alert(error.message);
+    else alert("Check your email for the confirmation link!");
+});
+
+document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    else window.location.href = "index.html";
+});
+
+document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithGoogle);
 
 async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -43,9 +72,12 @@ async function loadProducts(filter = "All") {
     products.forEach(item => {
         const card = document.createElement('div');
         card.className = 'product-card';
+        const stockText = item.is_in_stock ? 'In Stock' : 'Out of Stock';
+        const stockClass = item.is_in_stock ? '' : 'out-of-stock';
+
         card.innerHTML = `
-            <div class="stock-label ${item.is_in_stock ? '' : 'out-of-stock'}">
-                ${item.is_in_stock ? 'In Stock' : 'Out of Stock'}
+            <div class="stock-label ${stockClass}">
+                ${stockText}
             </div>
             <img src="${item.image_url}" alt="${item.name}">
             <div class="product-info">
@@ -53,7 +85,7 @@ async function loadProducts(filter = "All") {
                 <p><strong>${item.category}</strong> - ${item.placement}</p>
                 <span class="price">KES ${item.price.toLocaleString()}</span>
                 <button class="cart-trigger add-btn" ${item.is_in_stock ? '' : 'disabled'}>
-                    Add to Cart
+                    ${item.is_in_stock ? 'Add to Cart' : 'Unavailable'}
                 </button>
             </div>
         `;
@@ -71,81 +103,6 @@ async function loadProducts(filter = "All") {
         grid.appendChild(card);
     });
 }
-
-async function loadInventory() {
-    const list = document.getElementById('admin-product-list');
-    if (!list) return;
-
-    const { data: products, error } = await supabase
-        .from('products').select('*').order('created_at', { ascending: false });
-
-    if (error) return console.error(error);
-    list.innerHTML = '';
-
-    products.forEach(item => {
-        const row = document.createElement('div');
-        row.className = 'admin-item-row';
-        row.innerHTML = `
-            <img src="${item.image_url}" width="60">
-            <div>
-                <label>Name:</label>
-                <input type="text" value="${item.name}" id="edit-name-${item.id}">
-            </div>
-            <div>
-                <label>Price:</label>
-                <input type="number" value="${item.price}" id="edit-price-${item.id}">
-            </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="edit-stock-${item.id}" ${item.is_in_stock ? 'checked' : ''}>
-                <span>In Stock</span>
-            </div>
-            <div class="admin-actions">
-                <button onclick="updateProduct('${item.id}')" class="save-btn">Save</button>
-                <button onclick="deleteProduct('${item.id}')" class="delete-btn">Delete</button>
-            </div>
-        `;
-        list.appendChild(row);
-    });
-}
-
-document.getElementById('upload-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.innerText = "Uploading...";
-
-    const name = document.getElementById('pName').value;
-    const price = document.getElementById('pPrice').value;
-    const category = document.getElementById('pCategory').value;
-    const placement = document.getElementById('pPlacement').value;
-    const stock = document.getElementById('pStock').checked;
-    const file = document.getElementById('pImage').files[0];
-
-    try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `products/${fileName}`;
-
-        let { error: uploadError } = await supabase.storage.from('curtain-photos').upload(filePath, file);
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage.from('curtain-photos').getPublicUrl(filePath);
-
-        const { error: dbError } = await supabase.from('products').insert([{ 
-            name, price: parseFloat(price), image_url: publicUrl, is_in_stock: stock, category, placement
-        }]);
-
-        if (dbError) throw dbError;
-        alert("Added successfully!");
-        document.getElementById('upload-form').reset();
-        loadInventory();
-    } catch (error) {
-        alert("Error: " + error.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Upload Product";
-    }
-});
 
 async function displayCart() {
     const cartItemsDiv = document.getElementById('cart-items');
@@ -176,7 +133,6 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
     const address = document.getElementById('shipping-address').value;
     const phone = document.getElementById('mpesa-number').value;
     const totalRaw = document.getElementById('order-total').innerText;
-    
     const totalNumeric = parseFloat(totalRaw.replace(/[^\d.]/g, ''));
 
     if (!address.trim() || !phone.trim()) {
@@ -197,7 +153,7 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer YOUR_PUBLISHABLE_KEY"
+                "Authorization": "Bearer ISPubKey_live_fbe987ba-ded0-4538-ab0c-446f5e0bee5c" 
             },
             body: JSON.stringify({
                 amount: totalNumeric,
@@ -209,40 +165,31 @@ document.getElementById('confirm-order')?.addEventListener('click', async () => 
         const paymentData = await response.json();
 
         if (response.ok) {
-            const { error } = await supabase.from('orders').insert([{ 
+            const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQ6P05s0JL0mWh8Yx3cnBSjpgFiQhOJdoyxBTo76Q0sqcHxouxU4V-qWHbU3CiACtywQ/exec";
+            
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors", 
+                body: JSON.stringify({ amount: totalNumeric })
+            });
+
+            await supabase.from('orders').insert([{ 
                 user_id: user.id,
                 delivery_address: address,
                 total_price: totalNumeric,
-                status: 'pending_payment'
+                status: 'payout_initiated'
             }]);
 
-            if (error) throw error;
-
-            alert("Prompt sent! Enter your M-Pesa PIN on your phone to complete the order.");
+            alert("Order placed! Once you enter your M-Pesa PIN, funds will be transferred.");
             localStorage.removeItem('justEleganceCart');
             window.location.href = "index.html";
         } else {
-            alert("Payment Error: " + (paymentData.message || "Could not initiate STK Push."));
+            alert("Payment Error: " + (paymentData.message || "STK Push failed."));
         }
     } catch (err) {
         alert("System Error: " + err.message);
     }
 });
-
-window.updateProduct = async (id) => {
-    const newName = document.getElementById(`edit-name-${id}`).value;
-    const newPrice = document.getElementById(`edit-price-${id}`).value;
-    const newStock = document.getElementById(`edit-stock-${id}`).checked;
-    const { error } = await supabase.from('products').update({ name: newName, price: parseFloat(newPrice), is_in_stock: newStock }).eq('id', id);
-    if (error) alert(error.message); else alert("Updated!");
-};
-
-window.deleteProduct = async (id) => {
-    if(confirm("Delete item?")) {
-        await supabase.from('products').delete().eq('id', id);
-        loadInventory();
-    }
-};
 
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     await supabase.auth.signOut();
@@ -259,7 +206,6 @@ async function init() {
         if (user.email === adminEmail && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
     }
     loadProducts();
-    loadInventory();
     displayCart();
 }
 init();
