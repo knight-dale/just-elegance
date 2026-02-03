@@ -4,14 +4,6 @@ const supabaseUrl = 'https://sigvvutzispubojrjdrb.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpZ3Z2dXR6aXNwdWJvanJqZHJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjY3NzQsImV4cCI6MjA4NTMwMjc3NH0.z9y352u4sJNC4xoT10M-ikuVBm5OizUAyvGBIX2BCBU';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin }
-    });
-    if (error) console.error(error.message);
-}
-
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     window.location.href = "../index.html";
