@@ -35,6 +35,22 @@
             <button id="updatePasswordBtn" class="ghost-btn">Update Password</button>
         </div>
 
+        <div class="divider"><span>My Orders & Tracking</span></div>
+        <div id="user-orders-list" class="orders-list">
+            <p class="section-desc">Loading your orders...</p>
+        </div>
+
+        <div id="review-modal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <h3>Rate your purchase</h3>
+                <div class="star-rating" id="star-input">
+                    <span data-value="1">☆</span><span data-value="2">☆</span><span data-value="3">☆</span><span data-value="4">☆</span><span data-value="5">☆</span>
+                </div>
+                <button id="submit-review-btn" class="primary-btn">Submit Review</button>
+                <button onclick="document.getElementById('review-modal').style.display='none'" class="ghost-btn">Cancel</button>
+            </div>
+        </div>
+
         <div id="admin-section"></div>
 
         <button id="logoutBtn" class="delete-btn" style="width: 100%; margin-top: 30px;">Log Out</button>
