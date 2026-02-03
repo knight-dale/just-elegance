@@ -117,7 +117,7 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
         if (result.status === 'success') {
             alert(`Prompt sent for KES ${result.amount}! Please enter your PIN on your phone.`);
             localStorage.removeItem('justEleganceCart');
-            window.location.href = "index.html";
+            window.location.href = "../index.html";
         } else {
             throw new Error(result.error || "Payment trigger failed");
         }
@@ -158,7 +158,7 @@ async function loadProducts(filter = "All") {
         
         card.querySelector('.cart-trigger').onclick = async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) { alert("Please log in!"); window.location.href = "login.html"; }
+            if (!user) { alert("Please log in!"); window.location.href = "public/login.html"; }
             else addToCart(item);
         };
         grid.appendChild(card);
