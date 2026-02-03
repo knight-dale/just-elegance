@@ -63,16 +63,14 @@ async function displayCart() {
     });
 
     document.querySelectorAll('.remove-item-btn').forEach(btn => {
-        btn.onclick = (e) => removeFromCart(e.target.getAttribute('data-index'));
+        btn.onclick = (e) => {
+            let currentCart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
+            currentCart.splice(e.target.getAttribute('data-index'), 1);
+            localStorage.setItem('justEleganceCart', JSON.stringify(currentCart));
+            displayCart();
+        };
     });
     totalDisplay.innerText = `KES ${total.toLocaleString()}`;
-}
-
-function removeFromCart(index) {
-    let cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
-    cart.splice(index, 1);
-    localStorage.setItem('justEleganceCart', JSON.stringify(cart));
-    displayCart();
 }
 
 document.getElementById('confirm-order')?.addEventListener('click', async (e) => {
@@ -106,11 +104,11 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
 
         const result = await response.json();
         if (result.status === 'success') {
-            alert(`Prompt sent for KES ${result.amount}!`);
+            alert(`Prompt sent for KES ${result.amount}! Please enter your PIN on your phone.`);
             localStorage.removeItem('justEleganceCart');
             window.location.href = "index.html";
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || "Payment trigger failed");
         }
     } catch (err) {
         btn.disabled = false;
@@ -163,15 +161,7 @@ async function loadInventory() {
     list.innerHTML = '';
     products.forEach(item => {
         const row = document.createElement('div');
-        row.className = 'admin-item-row';
-        row.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
-                <span>${item.name} (${item.is_in_stock ? 'In Stock' : 'Out'})</span>
-                <div>
-                    <button onclick="updateStock('${item.id}', ${!item.is_in_stock})">Toggle Stock</button>
-                    <button onclick="deleteProduct('${item.id}')" style="color:red;">Delete</button>
-                </div>
-            </div>`;
+        row.innerHTML = `<p>${item.name} - <button onclick="updateStock('${item.id}', ${!item.is_in_stock})">Toggle Stock</button></p>`;
         list.appendChild(row);
     });
 }
@@ -188,14 +178,7 @@ async function loadOrders() {
     list.innerHTML = '';
     orders.forEach(order => {
         const card = document.createElement('div');
-        card.style = "background:white; padding:15px; border:1px solid #ddd; margin-bottom:10px;";
-        card.innerHTML = `
-            <p><strong>Order ID:</strong> ${order.id.substring(0,8)}</p>
-            <p><strong>Phone:</strong> ${order.customer_phone}</p>
-            <p><strong>Status:</strong> ${order.status.toUpperCase()}</p>
-            <button onclick="updateStatus('${order.id}', 'pending')">Pending</button>
-            <button onclick="updateStatus('${order.id}', 'in-transit')">In Transit</button>
-            <button onclick="updateStatus('${order.id}', 'delivered')">Delivered</button>`;
+        card.innerHTML = `<p>Order #${order.id.substring(0,8)} | Status: ${order.status} <button onclick="updateStatus('${order.id}', 'delivered')">Mark Delivered</button></p>`;
         list.appendChild(card);
     });
 }
@@ -212,29 +195,27 @@ async function loadUserOrders(user) {
     list.innerHTML = orders.length === 0 ? '<p>No orders yet.</p>' : '';
     orders.forEach(order => {
         const card = document.createElement('div');
-        card.style = "border:1px solid #eee; padding:15px; margin-bottom:10px; border-radius:8px;";
         const displayStatus = order.status === 'awaiting_payment' ? 'PENDING' : order.status.toUpperCase();
-        card.innerHTML = `
-            <p>Order #${order.id.substring(0,8)} | Status: <span class="status-badge">${displayStatus}</span></p>
-            ${order.status === 'delivered' ? `<button onclick="openReviewModal('${order.id}')">Rate Purchase</button>` : ''}`;
+        card.innerHTML = `<p>Order #${order.id.substring(0,8)} | Status: ${displayStatus}</p>`;
         list.appendChild(card);
     });
 }
 
 async function init() {
     const { data: { user } } = await supabase.auth.getUser();
+    
     if (window.location.pathname.includes("checkout.html") && !user) {
         window.location.href = "login.html";
         return;
     }
+    
     if (user) {
         if (document.getElementById('navLoginBtn')) document.getElementById('navLoginBtn').style.display = "none";
         if (document.getElementById('navProfileLink')) document.getElementById('navProfileLink').style.display = "inline-block";
         if (document.getElementById('navCartLink')) document.getElementById('navCartLink').style.display = "inline-block";
-        if (user?.user_metadata?.is_admin && document.getElementById('adminLink')) {
-            document.getElementById('adminLink').style.display = "inline-block";
-        }
+        if (user?.user_metadata?.is_admin && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
     }
+
     await Promise.all([loadProducts(), displayCart(), loadUserOrders(user), loadInventory(), loadOrders()]);
 }
 
