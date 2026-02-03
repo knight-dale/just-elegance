@@ -128,6 +128,18 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
     }
 });
 
+async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { 
+            redirectTo: window.location.origin + '/index.html' 
+        }
+    });
+    if (error) console.error(error.message);
+}
+
+document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithGoogle);
+
 async function loadProducts(filter = "All") {
     const grid = document.getElementById('product-grid');
     if (!grid) return;
