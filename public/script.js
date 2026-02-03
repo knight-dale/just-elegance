@@ -93,7 +93,7 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
     const { data: { session } } = await supabase.auth.getSession();
 
     try {
-        const response = await fetch(`${supabaseUrl}/functions/v1/payment-proxy`, {
+        const response = await fetch(`${supabaseUrl}/functions/v1/quick-responder`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
