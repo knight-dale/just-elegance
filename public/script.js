@@ -25,6 +25,14 @@ function generateStars(rating) {
     return stars;
 }
 
+function addToCart(item) {
+    if (!item.is_in_stock) return alert("This item is out of stock.");
+    let cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
+    cart.push({ id: item.id, name: item.name, price: item.price });
+    localStorage.setItem('justEleganceCart', JSON.stringify(cart));
+    alert(`${item.name} added to cart.`);
+}
+
 async function loadProducts(filter = "All") {
     const grid = document.getElementById('product-grid');
     if (!grid) return;
@@ -50,59 +58,102 @@ async function loadProducts(filter = "All") {
                     <span style="font-size:0.8rem; color:#666;">(${stats.total_reviews})</span>
                 </div>
                 <span class="price">KES ${item.price.toLocaleString()}</span>
-                <button class="cart-trigger add-btn" ${item.is_in_stock ? '' : 'disabled'}>Add to Cart</button>
+                <button class="cart-trigger add-btn" ${item.is_in_stock ? '' : 'disabled'}>
+                    ${item.is_in_stock ? 'Add to Cart' : 'Unavailable'}
+                </button>
             </div>`;
-        card.querySelector('.cart-trigger').onclick = () => addToCart(item);
+        
+        const btn = card.querySelector('.cart-trigger');
+        btn.onclick = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) { 
+                alert("Please log in!"); 
+                window.location.href = "login.html"; 
+            } else {
+                addToCart(item);
+            }
+        };
         grid.appendChild(card);
     });
 }
 
-async function loadUserOrders(user) {
-    const list = document.getElementById('user-orders-list');
-    if (!list || !user) return;
+async function loadInventory() {
+    const list = document.getElementById('admin-product-list');
+    if (!list) return;
+    const { data: products, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (error) return console.error(error);
+    list.innerHTML = '';
+    products.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'admin-item-row';
+        row.innerHTML = `
+            <div class="admin-item-info">
+                <img src="${item.image_url}" width="50">
+                <span>${item.name} - KES ${item.price}</span>
+            </div>
+            <div class="admin-actions">
+                <button onclick="updateStock('${item.id}', ${!item.is_in_stock})">
+                    Set as ${item.is_in_stock ? 'Out of Stock' : 'In Stock'}
+                </button>
+                <button onclick="deleteProduct('${item.id}')" style="background:red;color:white;">Delete</button>
+            </div>`;
+        list.appendChild(row);
+    });
+}
 
-    const { data: orders } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    list.innerHTML = orders.length === 0 ? '<p>No orders yet.</p>' : '';
-    
+window.updateStock = async (id, status) => {
+    const { error } = await supabase.from('products').update({ is_in_stock: status }).eq('id', id);
+    if (error) alert(error.message); else loadInventory();
+};
+
+async function loadOrders() {
+    const list = document.getElementById('admin-orders-list');
+    if (!list) return;
+    const { data: orders, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (error) return console.error(error);
+    list.innerHTML = orders.length === 0 ? '<p>No orders found.</p>' : '';
     orders.forEach(order => {
         const card = document.createElement('div');
-        card.className = 'order-card';
-        card.style = "border:1px solid #eee; padding:15px; margin-bottom:10px; border-radius:8px;";
+        card.className = 'order-card-admin';
+        card.style = "background:white; padding:15px; border:1px solid #ddd; margin-bottom:10px;";
         card.innerHTML = `
-            <p>Order #${order.id.substring(0,8)} | Status: <span class="status-badge ${order.status}">${order.status.toUpperCase()}</span></p>
-            ${order.status === 'delivered' ? `<button class="primary-btn" onclick="openReviewModal('${order.id}')">Rate Purchase</button>` : ''}
-        `;
+            <p><strong>Order ID:</strong> ${order.id.substring(0,8)}</p>
+            <p><strong>Address:</strong> ${order.delivery_address}</p>
+            <p><strong>Status:</strong> ${order.status.toUpperCase()}</p>
+            <button onclick="updateStatus('${order.id}', 'pending')">Pending</button>
+            <button onclick="updateStatus('${order.id}', 'delivered')">Delivered</button>`;
         list.appendChild(card);
     });
 }
 
-window.openReviewModal = async (orderId) => {
-    const modal = document.getElementById('review-modal');
-    modal.style.display = 'block';
-    
-    document.getElementById('submit-review-btn').onclick = async () => {
-        if (activeRating === 0) return alert("Select a rating.");
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        const { error } = await supabase.from('reviews').insert([{ 
-            user_id: user.id, 
-            rating: activeRating,
-            order_id: orderId 
-        }]);
-        
-        if (error) alert("Rating failed.");
-        else { alert("Success!"); modal.style.display = 'none'; location.reload(); }
-    };
+window.updateStatus = async (id, status) => {
+    const { error } = await supabase.from('orders').update({ status: status }).eq('id', id);
+    if (error) alert(error.message); else { loadOrders(); }
 };
+
+async function loadUserOrders(user) {
+    const list = document.getElementById('user-orders-list');
+    if (!list || !user) return;
+    const { data: orders } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    list.innerHTML = orders.length === 0 ? '<p>No orders yet.</p>' : '';
+    orders.forEach(order => {
+        const card = document.createElement('div');
+        card.className = 'order-card';
+        card.style = "border:1px solid #eee; padding:15px; margin-bottom:10px; border-radius:8px;";
+        const displayStatus = order.status === 'awaiting_confirmation' ? 'PENDING' : order.status.toUpperCase();
+        card.innerHTML = `
+            <p>Order #${order.id.substring(0,8)} | Status: <span class="status-badge">${displayStatus}</span></p>
+            ${order.status === 'delivered' ? `<button onclick="openReviewModal('${order.id}')">Rate Purchase</button>` : ''}`;
+        list.appendChild(card);
+    });
+}
 
 async function init() {
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (window.location.pathname.includes("checkout.html") && !user) {
         window.location.href = "login.html";
         return;
     }
-
     if (user) {
         if (document.getElementById('navLoginBtn')) document.getElementById('navLoginBtn').style.display = "none";
         if (document.getElementById('navProfileLink')) document.getElementById('navProfileLink').style.display = "inline-block";
@@ -111,8 +162,7 @@ async function init() {
             document.getElementById('adminLink').style.display = "inline-block";
         }
     }
-
-    await Promise.all([loadProducts(), loadUserOrders(user)]);
+    await Promise.all([loadProducts(), loadUserOrders(user), loadInventory(), loadOrders()]);
 }
 
 init();
