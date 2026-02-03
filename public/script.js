@@ -91,6 +91,12 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
     else if (cleanPhone.startsWith('7') || cleanPhone.startsWith('1')) cleanPhone = '254' + cleanPhone;
 
     const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+        btn.disabled = false;
+        btn.innerText = "PLACE ORDER";
+        return alert("Please log in again to continue.");
+    }
 
     try {
         const response = await fetch(`${supabaseUrl}/functions/v1/quick-responder`, {
@@ -101,6 +107,11 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
             },
             body: JSON.stringify({ cart, phone_number: cleanPhone, address })
         });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "Server error");
+        }
 
         const result = await response.json();
         if (result.status === 'success') {
@@ -158,6 +169,7 @@ async function loadInventory() {
     const list = document.getElementById('admin-product-list');
     if (!list) return;
     const { data: products } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (!products) return;
     list.innerHTML = '';
     products.forEach(item => {
         const row = document.createElement('div');
@@ -175,6 +187,7 @@ async function loadOrders() {
     const list = document.getElementById('admin-orders-list');
     if (!list) return;
     const { data: orders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (!orders) return;
     list.innerHTML = '';
     orders.forEach(order => {
         const card = document.createElement('div');
@@ -192,6 +205,7 @@ async function loadUserOrders(user) {
     const list = document.getElementById('user-orders-list');
     if (!list || !user) return;
     const { data: orders } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (!orders) return;
     list.innerHTML = orders.length === 0 ? '<p>No orders yet.</p>' : '';
     orders.forEach(order => {
         const card = document.createElement('div');
