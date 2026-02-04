@@ -29,17 +29,14 @@ async function displayCart() {
     const cartItemsDiv = document.getElementById('cart-items');
     const totalDisplay = document.getElementById('order-total');
     if (!cartItemsDiv) return;
-
     const cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
     cartItemsDiv.innerHTML = '';
     let total = 0;
-
     if (cart.length === 0) {
         cartItemsDiv.innerHTML = '<p class="section-desc">Your selection is empty.</p>';
         totalDisplay.innerText = 'KES 0';
         return;
     }
-
     cart.forEach((item, index) => {
         total += item.price;
         const itemRow = document.createElement('div');
@@ -53,7 +50,6 @@ async function displayCart() {
             <button class="remove-item-btn" data-index="${index}" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:0.75rem; text-decoration:underline;">Remove</button>`;
         cartItemsDiv.appendChild(itemRow);
     });
-
     document.querySelectorAll('.remove-item-btn').forEach(btn => {
         btn.onclick = (e) => {
             let currentCart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
@@ -68,28 +64,22 @@ async function displayCart() {
 document.getElementById('confirm-order')?.addEventListener('click', async (e) => {
     const btn = e.target;
     if (btn.disabled) return;
-
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (userError || !user || !session) {
+        btn.disabled = false;
+        btn.innerText = "PLACE ORDER";
+        return alert("Session expired. Please log out and back in.");
+    }
     const address = document.getElementById('shipping-address').value.trim();
     const phone = document.getElementById('mpesa-number').value.trim();
     const cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
-
     if (!address || !phone || cart.length === 0) return alert("Missing details or empty cart.");
-
     btn.disabled = true;
     btn.innerText = "Processing Securely...";
-
     let cleanPhone = phone.replace(/\D/g, ''); 
     if (cleanPhone.startsWith('0')) cleanPhone = '254' + cleanPhone.substring(1);
     else if (cleanPhone.startsWith('7') || cleanPhone.startsWith('1')) cleanPhone = '254' + cleanPhone;
-
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-        btn.disabled = false;
-        btn.innerText = "PLACE ORDER";
-        return alert("Please log in again to continue.");
-    }
-
     try {
         const response = await fetch(`${supabaseUrl}/functions/v1/quick-responder`, {
             method: 'POST',
@@ -99,12 +89,10 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
             },
             body: JSON.stringify({ cart, phone_number: cleanPhone, address })
         });
-
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(errorText || "Server error");
         }
-
         const result = await response.json();
         if (result.status === 'success') {
             alert(`Prompt sent for KES ${result.amount}! Please enter your PIN on your phone.`);
@@ -135,13 +123,10 @@ document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithG
 async function loadProducts(filter = "All") {
     const grid = document.getElementById('product-grid');
     if (!grid) return;
-    
     let query = supabase.from('products').select('*, product_ratings(total_reviews, average_rating)').order('created_at', { ascending: true });
     if (filter !== "All") query = query.eq('category', filter);
-    
     const { data: products, error } = await query;
     if (error) return;
-    
     grid.innerHTML = ''; 
     products.forEach(item => {
         const stats = item.product_ratings[0] || { total_reviews: 0, average_rating: 0 };
@@ -159,7 +144,6 @@ async function loadProducts(filter = "All") {
                 <span class="price">KES ${item.price.toLocaleString()}</span>
                 <button class="cart-trigger add-btn" ${item.is_in_stock ? '' : 'disabled'}>${item.is_in_stock ? 'Add to Cart' : 'Unavailable'}</button>
             </div>`;
-        
         card.querySelector('.cart-trigger').onclick = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) { alert("Please log in!"); window.location.href = "public/login.html"; }
@@ -221,19 +205,16 @@ async function loadUserOrders(user) {
 
 async function init() {
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (window.location.pathname.includes("checkout.html") && !user) {
         window.location.href = "login.html";
         return;
     }
-    
     if (user) {
         if (document.getElementById('navLoginBtn')) document.getElementById('navLoginBtn').style.display = "none";
         if (document.getElementById('navProfileLink')) document.getElementById('navProfileLink').style.display = "inline-block";
         if (document.getElementById('navCartLink')) document.getElementById('navCartLink').style.display = "inline-block";
         if (user?.user_metadata?.is_admin && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
     }
-
     await Promise.all([loadProducts(), displayCart(), loadUserOrders(user), loadInventory(), loadOrders()]);
 }
 
