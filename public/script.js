@@ -146,30 +146,37 @@ async function loadInventory() {
     if (!list) return;
     const { data: products } = await supabase.from('products').select('*').order('created_at', { ascending: false });
     if (!products) return;
+    
     list.innerHTML = '';
     products.forEach(item => {
         const row = document.createElement('div');
-        row.className = 'admin-inventory-card';
-        row.style = "display:flex; align-items:center; gap:20px; background:white; padding:20px; border-radius:12px; margin-bottom:15px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.02);";
+        row.className = 'admin-inventory-row';
+        row.style = "display:flex; align-items:center; justify-content:space-between; gap:20px; background:white; padding:10px 20px; border-bottom:1px solid #eee; min-height:60px;";
+        
         row.innerHTML = `
-            <img src="${item.image_url}" style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #f0f0f0;">
-            <div style="flex:1;">
-                <input type="text" value="${item.name}" id="edit-name-${item.id}" style="width:100%; font-weight:600; font-size:1.1rem; border:none; padding:4px; margin-bottom:4px; font-family:inherit;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-size:0.9rem; color:#666;">KES</span>
-                    <input type="number" value="${item.price}" id="edit-price-${item.id}" style="width:100px; border:none; color:#666; font-size:0.9rem; font-family:inherit;">
-                </div>
-                <div style="margin-top:8px;">
-                    <span style="font-size:0.75rem; padding:4px 10px; border-radius:12px; font-weight:600; text-transform:uppercase; background:${item.is_in_stock ? '#e6f4ea' : '#fce8e6'}; color:${item.is_in_stock ? '#1e7e34' : '#d93025'};">
-                        ${item.is_in_stock ? 'Active' : 'Hidden'}
-                    </span>
-                </div>
+            <img src="${item.image_url}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; flex-shrink:0;">
+            
+            <input type="text" value="${item.name}" id="edit-name-${item.id}" 
+                style="flex:2; border:none; font-weight:500; font-family:inherit; padding:5px;">
+            
+            <div style="flex:1; display:flex; align-items:center; gap:5px;">
+                <span style="font-size:0.8rem; color:#888;">KES</span>
+                <input type="number" value="${item.price}" id="edit-price-${item.id}" 
+                    style="width:80px; border:none; font-family:inherit; padding:5px;">
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <button onclick="saveProduct('${item.id}')" style="padding:8px 16px; background:#000; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">SAVE</button>
-                <button onclick="updateStock('${item.id}', ${!item.is_in_stock})" style="padding:8px 16px; background:#f0f0f0; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem;">TOGGLE</button>
-                <button onclick="deleteProduct('${item.id}')" style="background:none; border:none; color:#d93025; cursor:pointer; font-size:0.8rem; text-decoration:underline;">DELETE</button>
-            </div>`;
+
+            <div style="flex:1; text-align:center;">
+                <span onclick="updateStock('${item.id}', ${!item.is_in_stock})" 
+                    style="cursor:pointer; font-size:0.7rem; padding:4px 8px; border-radius:4px; font-weight:bold; background:${item.is_in_stock ? '#e6f4ea' : '#fce8e6'}; color:${item.is_in_stock ? '#1e7e34' : '#d93025'};">
+                    ${item.is_in_stock ? 'IN STOCK' : 'OUT OF STOCK'}
+                </span>
+            </div>
+
+            <div style="display:flex; gap:15px; align-items:center;">
+                <button onclick="saveProduct('${item.id}')" style="background:#000; color:#fff; border:none; padding:5px 12px; border-radius:4px; cursor:pointer; font-size:0.75rem;">SAVE</button>
+                <button onclick="deleteProduct('${item.id}')" style="background:none; border:none; color:#d93025; cursor:pointer; font-size:1.1rem; font-weight:bold;">&times;</button>
+            </div>
+        `;
         list.appendChild(row);
     });
 }
