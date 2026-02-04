@@ -113,13 +113,13 @@ document.getElementById('upload-form')?.addEventListener('submit', async (e) => 
     if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const fileName = `${Date.now()}_${file.name}`;
-        const { data, error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+        const { data, error: uploadError } = await supabase.storage.from('curtain-photos').upload(fileName, file);
         if (uploadError) {
             alert("Image upload failed: " + uploadError.message);
             btn.disabled = false;
             return;
         }
-        imageUrl = supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+        imageUrl = supabase.storage.from('curtain-photos').getPublicUrl(fileName).data.publicUrl;
     }
 
     const newProduct = {
@@ -132,9 +132,8 @@ document.getElementById('upload-form')?.addEventListener('submit', async (e) => 
     };
 
     const { error } = await supabase.from('products').insert([newProduct]);
-    if (error) {
-        alert("Error: " + error.message);
-    } else {
+    if (error) alert("Error: " + error.message);
+    else {
         alert("Product uploaded successfully!");
         e.target.reset();
         loadInventory();
@@ -150,18 +149,43 @@ async function loadInventory() {
     list.innerHTML = '';
     products.forEach(item => {
         const row = document.createElement('div');
-        row.style = "display:flex; align-items:center; gap:15px; background:white; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;";
+        row.className = 'admin-inventory-card';
+        row.style = "display:flex; align-items:center; gap:20px; background:white; padding:20px; border-radius:12px; margin-bottom:15px; border:1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.02);";
         row.innerHTML = `
-            <img src="${item.image_url}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
+            <img src="${item.image_url}" style="width:70px; height:70px; object-fit:cover; border-radius:8px; border:1px solid #f0f0f0;">
             <div style="flex:1;">
-                <h4 style="margin:0;">${item.name}</h4>
-                <p style="margin:2px 0; font-size:0.8rem; color:#666;">KES ${item.price.toLocaleString()} | ${item.is_in_stock ? 'In Stock' : 'Out'}</p>
+                <input type="text" value="${item.name}" id="edit-name-${item.id}" style="width:100%; font-weight:600; font-size:1.1rem; border:none; padding:4px; margin-bottom:4px; font-family:inherit;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:0.9rem; color:#666;">KES</span>
+                    <input type="number" value="${item.price}" id="edit-price-${item.id}" style="width:100px; border:none; color:#666; font-size:0.9rem; font-family:inherit;">
+                </div>
+                <div style="margin-top:8px;">
+                    <span style="font-size:0.75rem; padding:4px 10px; border-radius:12px; font-weight:600; text-transform:uppercase; background:${item.is_in_stock ? '#e6f4ea' : '#fce8e6'}; color:${item.is_in_stock ? '#1e7e34' : '#d93025'};">
+                        ${item.is_in_stock ? 'Active' : 'Hidden'}
+                    </span>
+                </div>
             </div>
-            <button onclick="updateStock('${item.id}', ${!item.is_in_stock})">Toggle Stock</button>
-            <button onclick="deleteProduct('${item.id}')" style="color:red;">Delete</button>`;
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button onclick="saveProduct('${item.id}')" style="padding:8px 16px; background:#000; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">SAVE</button>
+                <button onclick="updateStock('${item.id}', ${!item.is_in_stock})" style="padding:8px 16px; background:#f0f0f0; border:none; border-radius:6px; cursor:pointer; font-size:0.8rem;">TOGGLE</button>
+                <button onclick="deleteProduct('${item.id}')" style="background:none; border:none; color:#d93025; cursor:pointer; font-size:0.8rem; text-decoration:underline;">DELETE</button>
+            </div>`;
         list.appendChild(row);
     });
 }
+
+window.saveProduct = async (id) => {
+    const newName = document.getElementById(`edit-name-${id}`).value;
+    const newPrice = parseFloat(document.getElementById(`edit-price-${id}`).value);
+    
+    const { error } = await supabase.from('products').update({ name: newName, price: newPrice }).eq('id', id);
+    if (error) alert(error.message);
+    else {
+        alert("Product updated!");
+        loadInventory();
+        loadProducts();
+    }
+};
 
 window.updateStock = async (id, status) => {
     await supabase.from('products').update({ is_in_stock: status }).eq('id', id);
@@ -169,7 +193,7 @@ window.updateStock = async (id, status) => {
 };
 
 window.deleteProduct = async (id) => {
-    if (!confirm("Delete this product?")) return;
+    if (!confirm("Delete this product permanently?")) return;
     await supabase.from('products').delete().eq('id', id);
     loadInventory();
 };
