@@ -4,9 +4,30 @@ const supabaseUrl = 'https://sigvvutzispubojrjdrb.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpZ3Z2dXR6aXNwdWJvanJqZHJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjY3NzQsImV4cCI6MjA4NTMwMjc3NH0.z9y352u4sJNC4xoT10M-ikuVBm5OizUAyvGBIX2BCBU';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+async function signInWithGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { 
+            redirectTo: window.location.origin + '../index.html' 
+        }
+    });
+    if (error) console.error(error.message);
+}
+
+document.getElementById('googleLoginBtn')?.addEventListener('click', signInWithGoogle);
+
 document.getElementById('logInBtn')?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     window.location.href = "../index.html";
+});
+
+document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    else window.location.href = "../index.html";
 });
 
 function generateStars(rating) {
@@ -102,26 +123,73 @@ document.getElementById('confirm-order')?.addEventListener('click', async (e) =>
     }
 });
 
+async function loadOrders() {
+    const list = document.getElementById('admin-orders-list');
+    if (!list) return;
+    const { data: orders, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (error) return console.error(error.message);
+    list.innerHTML = '';
+    orders.forEach(order => {
+        const row = document.createElement('div');
+        row.style = "display:flex; align-items:center; justify-content:space-between; gap:15px; background:white; padding:15px; border-bottom:1px solid #eee; font-size:0.85rem;";
+        row.innerHTML = `
+            <div style="flex:1; color:#888;">#${order.id.substring(0,5)}<br>${new Date(order.created_at).toLocaleDateString()}</div>
+            <div style="flex:2; font-weight:600;">${order.cart.map(item => item.name).join(', ')}</div>
+            <div style="flex:1;">KES ${order.total_price.toLocaleString()}</div>
+            <div style="flex:2; color:#555;">${order.delivery_address}</div>
+            <div style="flex:3; display:flex; gap:5px; justify-content:flex-end;">
+                <button onclick="updateOrderStatus('${order.id}', 'pending')" style="background:#f0f0f0; border:1px solid #ccc; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Pending</button>
+                <button onclick="updateOrderStatus('${order.id}', 'received')" style="background:#e6f4ea; border:1px solid #1e7e34; color:#1e7e34; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Paid</button>
+                <button onclick="updateOrderStatus('${order.id}', 'in-transit')" style="background:#fff4e5; border:1px solid #ff9800; color:#ff9800; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Transit</button>
+                <button onclick="updateOrderStatus('${order.id}', 'delivered')" style="background:#000; color:#fff; border:none; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Done</button>
+            </div>`;
+        list.appendChild(row);
+    });
+}
+
+window.updateOrderStatus = async (id, status) => {
+    const { error } = await supabase.from('orders').update({ status: status }).eq('id', id);
+    if (error) alert(error.message);
+    else {
+        loadOrders();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) loadUserOrders(user);
+    }
+};
+
+async function loadUserOrders(user) {
+    const list = document.getElementById('user-orders-list');
+    if (!list || !user) return;
+    const { data: orders } = await supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    list.innerHTML = orders.length === 0 ? '<p>No orders yet.</p>' : '';
+    const labels = { 'pending': 'PENDING', 'received': 'PAYMENT RECEIVED', 'in-transit': 'IN TRANSIT', 'delivered': 'DELIVERED' };
+    orders.forEach(order => {
+        const card = document.createElement('div');
+        card.style = "padding:15px; border:1px solid #eee; margin-bottom:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;";
+        card.innerHTML = `
+            <div><strong>Order #${order.id.substring(0,8)}</strong><br><span style="font-size:0.8rem; color:#888;">${order.cart.map(i => i.name).join(', ')}</span></div>
+            <span style="font-weight:bold; color:var(--accent); font-size:0.8rem; letter-spacing:1px;">${labels[order.status] || order.status.toUpperCase()}</span>`;
+        list.appendChild(card);
+    });
+}
+
 document.getElementById('upload-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-
     const fileInput = document.getElementById('pImage');
     let imageUrl = "";
-
     if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const fileName = `${Date.now()}_${file.name}`;
         const { data, error: uploadError } = await supabase.storage.from('curtain-photos').upload(fileName, file);
         if (uploadError) {
-            alert("Image upload failed: " + uploadError.message);
+            alert("Upload Error: " + uploadError.message);
             btn.disabled = false;
             return;
         }
         imageUrl = supabase.storage.from('curtain-photos').getPublicUrl(fileName).data.publicUrl;
     }
-
     const newProduct = {
         name: document.getElementById('pName').value,
         price: parseFloat(document.getElementById('pPrice').value),
@@ -130,7 +198,6 @@ document.getElementById('upload-form')?.addEventListener('submit', async (e) => 
         image_url: imageUrl,
         is_in_stock: document.getElementById('pStock').checked
     };
-
     const { error } = await supabase.from('products').insert([newProduct]);
     if (error) alert("Error: " + error.message);
     else {
@@ -146,37 +213,26 @@ async function loadInventory() {
     if (!list) return;
     const { data: products } = await supabase.from('products').select('*').order('created_at', { ascending: false });
     if (!products) return;
-    
     list.innerHTML = '';
     products.forEach(item => {
         const row = document.createElement('div');
-        row.className = 'admin-inventory-row';
         row.style = "display:flex; align-items:center; justify-content:space-between; gap:20px; background:white; padding:10px 20px; border-bottom:1px solid #eee; min-height:60px;";
-        
         row.innerHTML = `
             <img src="${item.image_url}" style="width:45px; height:45px; object-fit:cover; border-radius:4px; flex-shrink:0;">
-            
-            <input type="text" value="${item.name}" id="edit-name-${item.id}" 
-                style="flex:2; border:none; font-weight:500; font-family:inherit; padding:5px;">
-            
+            <input type="text" value="${item.name}" id="edit-name-${item.id}" style="flex:2; border:none; font-weight:500; font-family:inherit; padding:5px;">
             <div style="flex:1; display:flex; align-items:center; gap:5px;">
                 <span style="font-size:0.8rem; color:#888;">KES</span>
-                <input type="number" value="${item.price}" id="edit-price-${item.id}" 
-                    style="width:80px; border:none; font-family:inherit; padding:5px;">
+                <input type="number" value="${item.price}" id="edit-price-${item.id}" style="width:80px; border:none; font-family:inherit; padding:5px;">
             </div>
-
             <div style="flex:1; text-align:center;">
-                <span onclick="updateStock('${item.id}', ${!item.is_in_stock})" 
-                    style="cursor:pointer; font-size:0.7rem; padding:4px 8px; border-radius:4px; font-weight:bold; background:${item.is_in_stock ? '#e6f4ea' : '#fce8e6'}; color:${item.is_in_stock ? '#1e7e34' : '#d93025'};">
+                <span onclick="updateStock('${item.id}', ${!item.is_in_stock})" style="cursor:pointer; font-size:0.75rem; padding:4px 8px; border-radius:4px; font-weight:bold; background:${item.is_in_stock ? '#e6f4ea' : '#fce8e6'}; color:${item.is_in_stock ? '#1e7e34' : '#d93025'}; text-transform:uppercase;">
                     ${item.is_in_stock ? 'IN STOCK' : 'OUT OF STOCK'}
                 </span>
             </div>
-
             <div style="display:flex; gap:15px; align-items:center;">
                 <button onclick="saveProduct('${item.id}')" style="background:#000; color:#fff; border:none; padding:5px 12px; border-radius:4px; cursor:pointer; font-size:0.75rem;">SAVE</button>
                 <button onclick="deleteProduct('${item.id}')" style="background:none; border:none; color:#d93025; cursor:pointer; font-size:1.1rem; font-weight:bold;">&times;</button>
-            </div>
-        `;
+            </div>`;
         list.appendChild(row);
     });
 }
@@ -184,7 +240,6 @@ async function loadInventory() {
 window.saveProduct = async (id) => {
     const newName = document.getElementById(`edit-name-${id}`).value;
     const newPrice = parseFloat(document.getElementById(`edit-price-${id}`).value);
-    
     const { error } = await supabase.from('products').update({ name: newName, price: newPrice }).eq('id', id);
     if (error) alert(error.message);
     else {
@@ -200,7 +255,7 @@ window.updateStock = async (id, status) => {
 };
 
 window.deleteProduct = async (id) => {
-    if (!confirm("Delete this product permanently?")) return;
+    if (!confirm("Delete permanently?")) return;
     await supabase.from('products').delete().eq('id', id);
     loadInventory();
 };
@@ -234,6 +289,26 @@ async function loadProducts(filter = "All") {
     });
 }
 
+document.getElementById('forgotPasswordBtn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+
+    if (!email) {
+        alert("Please enter your email address first.");
+        return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/public/reset-password.html',
+    });
+
+    if (error) {
+        alert("Error: " + error.message);
+    } else {
+        alert("Password reset link sent to your email!");
+    }
+});
+
 async function init() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -242,7 +317,13 @@ async function init() {
         if (document.getElementById('navCartLink')) document.getElementById('navCartLink').style.display = "inline-block";
         if (user?.user_metadata?.is_admin && document.getElementById('adminLink')) document.getElementById('adminLink').style.display = "inline-block";
     }
-    await Promise.all([loadProducts(), displayCart(), loadInventory()]);
+    await Promise.all([
+        loadProducts(), 
+        displayCart(), 
+        loadInventory(), 
+        loadOrders(), 
+        loadUserOrders(user)
+    ]);
 }
 
 init();
