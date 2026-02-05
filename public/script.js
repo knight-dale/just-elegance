@@ -82,76 +82,156 @@ async function displayCart() {
     totalDisplay.innerText = `KES ${total.toLocaleString()}`;
 }
 
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        console.log("Auth state changed:", event);
+        if (!session && window.location.pathname.includes('checkout')) {
+            alert("Your session has timed out. Redirecting to login...");
+            window.location.href = "login.html";
+        }
+    }
+});
+
 document.getElementById('confirm-order')?.addEventListener('click', async (e) => {
     const btn = e.target;
     if (btn.disabled) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!user || !session) {
-        btn.disabled = false;
+
+    console.log("--- Starting Checkout Process ---");
+    
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+        console.error("Auth Error: No valid session found.");
         return alert("Session expired. Please log out and back in.");
     }
+
+    const user = session.user;
+    console.log("User verified:", user.email);
+
     const address = document.getElementById('shipping-address').value.trim();
     const phone = document.getElementById('mpesa-number').value.trim();
     const cart = JSON.parse(localStorage.getItem('justEleganceCart')) || [];
-    if (!address || !phone || cart.length === 0) return alert("Missing details or empty cart.");
+
+    console.log("Form Data:", { address, phone, cartItems: cart.length });
+
+    if (!address || !phone || cart.length === 0) {
+        console.warn("Validation Failed.");
+        return alert("Missing details or empty cart.");
+    }
+
     btn.disabled = true;
     btn.innerText = "Processing...";
+
     let cleanPhone = phone.replace(/\D/g, ''); 
     if (cleanPhone.startsWith('0')) cleanPhone = '254' + cleanPhone.substring(1);
+    console.log("Formatted Phone:", cleanPhone);
+
     try {
+        console.log("Calling Edge Function: quick-responder...");
         const response = await fetch(`${supabaseUrl}/functions/v1/quick-responder`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': supabaseKey
             },
             body: JSON.stringify({ cart, phone_number: cleanPhone, address })
         });
+
+        console.log("Response Status:", response.status);
         const result = await response.json();
-        if (result.status === 'success') {
+        console.log("Function Result:", result);
+
+        if (response.ok && result.status === 'success') {
+            console.log("STK Push Triggered Successfully!");
             alert(`Success! KES ${result.amount} STK Push sent.`);
             localStorage.removeItem('justEleganceCart');
             window.location.href = "../index.html";
         } else {
-            throw new Error(result.error || "Payment trigger failed");
+            console.error("Function Error Detail:", result);
+            throw new Error(result.message || result.error || "Invalid JWT or Session Error");
         }
     } catch (err) {
+        console.error("Catch Block Error:", err.message);
         btn.disabled = false;
         btn.innerText = "PLACE ORDER";
         alert("Transaction Error: " + err.message);
     }
 });
 
+async function handleLogout() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        console.error("Logout Error:", error.message);
+        alert("Error logging out: " + error.message);
+    } else {
+        localStorage.removeItem('justEleganceCart');
+        window.location.href = "../index.html";
+    }
+}
+
+document.querySelectorAll('#logoutBtn, .logout-link').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await handleLogout();
+    });
+});
+
 async function loadOrders() {
     const list = document.getElementById('admin-orders-list');
     if (!list) return;
-    const { data: orders, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+
+    const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
     if (error) return console.error(error.message);
+
     list.innerHTML = '';
     orders.forEach(order => {
         const row = document.createElement('div');
-        row.style = "display:flex; align-items:center; justify-content:space-between; gap:15px; background:white; padding:15px; border-bottom:1px solid #eee; font-size:0.85rem;";
+        row.style = "display:flex; align-items:center; justify-content:space-between; gap:15px; background:white; padding:20px; border-bottom:1px solid #eee; font-size:0.85rem;";
+        
+        const activeStyle = "background:#000; color:#fff; border:none;";
+        const offStyle = "background:#f5f5f5; color:#888; border:1px solid #ddd;";
+
         row.innerHTML = `
-            <div style="flex:1; color:#888;">#${order.id.substring(0,5)}<br>${new Date(order.created_at).toLocaleDateString()}</div>
-            <div style="flex:2; font-weight:600;">${order.cart.map(item => item.name).join(', ')}</div>
-            <div style="flex:1;">KES ${order.total_price.toLocaleString()}</div>
+            <div style="flex:1; color:#888;">
+                #${order.id.substring(0,5)}<br>${new Date(order.created_at).toLocaleDateString()}
+            </div>
+            <div style="flex:2;">
+                <div style="font-weight:600;">${order.cart.map(item => item.name).join(', ')}</div>
+                <div style="font-size:0.75rem; color:var(--accent);">${order.customer_phone || 'No Phone'}</div>
+            </div>
+            <div style="flex:1; font-weight:600;">KES ${order.total_price.toLocaleString()}</div>
             <div style="flex:2; color:#555;">${order.delivery_address}</div>
+            
             <div style="flex:3; display:flex; gap:5px; justify-content:flex-end;">
-                <button onclick="updateOrderStatus('${order.id}', 'pending')" style="background:#f0f0f0; border:1px solid #ccc; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Pending</button>
-                <button onclick="updateOrderStatus('${order.id}', 'received')" style="background:#e6f4ea; border:1px solid #1e7e34; color:#1e7e34; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Paid</button>
-                <button onclick="updateOrderStatus('${order.id}', 'in-transit')" style="background:#fff4e5; border:1px solid #ff9800; color:#ff9800; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Transit</button>
-                <button onclick="updateOrderStatus('${order.id}', 'delivered')" style="background:#000; color:#fff; border:none; padding:4px 8px; cursor:pointer; font-size:0.7rem;">Done</button>
-            </div>`;
+                <button onclick="updateOrderStatus('${order.id}', 'pending')" 
+                    style="padding:6px 10px; cursor:pointer; font-size:0.7rem; border-radius:4px; ${order.status === 'pending' ? activeStyle : offStyle}">Pending</button>
+                <button onclick="updateOrderStatus('${order.id}', 'received')" 
+                    style="padding:6px 10px; cursor:pointer; font-size:0.7rem; border-radius:4px; ${order.status === 'received' ? activeStyle : offStyle}">Paid</button>
+                <button onclick="updateOrderStatus('${order.id}', 'in-transit')" 
+                    style="padding:6px 10px; cursor:pointer; font-size:0.7rem; border-radius:4px; ${order.status === 'in-transit' ? activeStyle : offStyle}">Transit</button>
+                <button onclick="updateOrderStatus('${order.id}', 'delivered')" 
+                    style="padding:6px 10px; cursor:pointer; font-size:0.7rem; border-radius:4px; ${order.status === 'delivered' ? activeStyle : offStyle}">Delivered</button>
+            </div>
+        `;
         list.appendChild(row);
     });
 }
 
 window.updateOrderStatus = async (id, status) => {
-    const { error } = await supabase.from('orders').update({ status: status }).eq('id', id);
-    if (error) alert(error.message);
-    else {
-        loadOrders();
+    const { error } = await supabase
+        .from('orders')
+        .update({ status: status })
+        .eq('id', id);
+    
+    if (error) {
+        alert("Error updating status: " + error.message);
+    } else {
+        loadOrders(); 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) loadUserOrders(user);
     }
